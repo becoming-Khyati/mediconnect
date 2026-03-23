@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Box, Typography, Paper, Divider } from "@mui/material";
+import { Box, Typography, Paper } from "@mui/material";
 import api from "../api/axios";
 
 function Notifications() {
@@ -14,18 +14,28 @@ function Notifications() {
     }
   };
 
-  useEffect(() => {
-    fetchNotifications();
+  const markAsRead = async () => {
+    try {
+      await api.post("notifications/read/");
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
-    const markAsRead = async () => {
-        try {
-            await api.post("notifications/read/");
-        } catch (err) {
-            console.log(err);
-        }
+  useEffect(() => {
+    const init = async () => {
+      await fetchNotifications();
+      await markAsRead();
+      await fetchNotifications();
     };
 
-    markAsRead();
+    init();
+
+    const interval = setInterval(() => {
+      fetchNotifications();
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, []);
 
   return (

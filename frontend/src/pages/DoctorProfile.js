@@ -13,6 +13,7 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import { useNavigate } from "react-router-dom";
 
+const BASE_URL = "http://127.0.0.1:8000";
 
 function DoctorProfile() {
 
@@ -27,15 +28,20 @@ function DoctorProfile() {
     const [preview, setPreview] = useState(null);
     const navigate = useNavigate();
 
-    
-
     useEffect(() => {
         fetchProfile();
     }, []);
 
     const fetchProfile = async () => {
-        const res = await api.get("profile/");
-        setForm(res.data);
+        try {
+            const res = await api.get("profile/");
+            setForm({
+                ...res.data,
+                profile_picture: res.data.profile_picture || null
+            });
+        } catch (error) {
+            console.error(error);
+        }
     };
 
     const handleChange = (e) => {
@@ -44,9 +50,9 @@ function DoctorProfile() {
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
-        setForm({ ...form, profile_picture: file });
 
         if (file) {
+            setForm({ ...form, profile_picture: file });
             setPreview(URL.createObjectURL(file));
         }
     };
@@ -54,48 +60,54 @@ function DoctorProfile() {
     const handleSubmit = async () => {
         const data = new FormData();
 
-        Object.keys(form).forEach(key => {
-            if (form[key] !== null) {
-                data.append(key, form[key]);
-            }
-        });
+        data.append("specialization", form.specialization || "");
+        data.append("age", form.age || "");
+        data.append("gender", form.gender || "");
+
+        // ✅ ONLY send file if it's actually a file
+        if (form.profile_picture instanceof File) {
+            data.append("profile_picture", form.profile_picture);
+        }
 
         try {
             const res = await api.put("profile/", data, {
-                headers: {"Content-Type": "multipart/form-data" }
+                headers: { "Content-Type": "multipart/form-data" }
             });
 
-            setForm(res.data);
+            setForm({
+                ...res.data,
+                profile_picture: res.data.profile_picture || null
+            });
+
             setPreview(null);
 
             alert("Profile Updated");
-
             navigate("/dashboard");
+
         } catch (error) {
+            console.error(error);
             alert("Update Failed");
         }
     };
 
-    // ADD THIS FUNCTION ABOVE return()
-const handleDeleteAccount = async () => {
-    const confirmDelete = window.confirm(
-        "Are you sure? This will delete all your data permanently."
-    );
+    const handleDeleteAccount = async () => {
+        const confirmDelete = window.confirm(
+            "Are you sure? This will delete all your data permanently."
+        );
 
-    if (!confirmDelete) return;
+        if (!confirmDelete) return;
 
-    try {
-        await api.delete("doctor/delete-account/");
+        try {
+            await api.delete("doctor/delete-account/");
+            alert("Account deleted");
 
-        alert("Account deleted");
-
-        localStorage.clear();
-        window.location.href = "/";
-    } catch (error) {
-        console.error(error);
-        alert("Failed to Delete Account");
-    }
-};
+            localStorage.clear();
+            window.location.href = "/";
+        } catch (error) {
+            console.error(error);
+            alert("Failed to Delete Account");
+        }
+    };
 
     return (
         <Container maxWidth="sm">
@@ -121,9 +133,14 @@ const handleDeleteAccount = async () => {
                             preview
                                 ? preview
                                 : form.profile_picture
-                                ? `http://127.0.0.1:8000${form.profile_picture}`
-                                : ""
+                                ? form.profile_picture.startsWith("http")
+                                    ? form.profile_picture
+                                    : `${BASE_URL}${form.profile_picture}`
+                                : "/default-avatar.png"
                         }
+                        onError={(e) => {
+                            e.target.src = "/default-avatar.png";
+                        }}
                         sx={{ width: 120, height: 120, margin: "auto" }}
                     />
 
@@ -134,7 +151,8 @@ const handleDeleteAccount = async () => {
                             bottom: 0,
                             right: 0,
                             background: "#1976d2",
-                            color: "white"
+                            color: "white",
+                            "&:hover": { background: "#1565c0" }
                         }}
                     >
                         <EditIcon />
@@ -189,13 +207,13 @@ const handleDeleteAccount = async () => {
                     </Button>
 
                     <Button
-                         fullWidth
-                         variant="contained"
-                         color="error"
-                         sx={{ mt: 2 }}
-                         onClick={handleDeleteAccount}
+                        fullWidth
+                        variant="contained"
+                        color="error"
+                        sx={{ mt: 2 }}
+                        onClick={handleDeleteAccount}
                     >
-                             Delete Account
+                        Delete Account
                     </Button>
                 </Box>
 

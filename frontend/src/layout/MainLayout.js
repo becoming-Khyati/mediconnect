@@ -10,9 +10,10 @@ import {
     AppBar,
     Typography,
     IconButton,
-    Avatar, Badge
+    Avatar,
+    Badge
 } from "@mui/material";
-import NotificationsIcon from "@mui/icons-material/Notifications"
+import NotificationsIcon from "@mui/icons-material/Notifications";
 import MenuIcon from "@mui/icons-material/Menu";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
@@ -21,59 +22,52 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import api from "../api/axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
+
 const drawerWidth = 240;
 const miniWidth = 70;
 
 function MainLayout({ children }) {
-
     const [open, setOpen] = useState(true);
     const [profile, setProfile] = useState(null);
     const [notifCount, setNotifCount] = useState(0);
 
+    const navigate = useNavigate();
+    const location = useLocation();
+    const role = localStorage.getItem("role");
+
+    const fetchProfile = async () => {
+        try {
+            const res = await api.get("profile/");
+            setProfile(res.data);
+        } catch (err) {
+            console.log("Profile fetch error", err);
+        }
+    };
+
     const fetchNotifications = async () => {
         try {
             const res = await api.get("notifications/");
-            const unread = res.data.filter(n => !n.is_read);
+            const unread = res.data.filter((n) => !n.is_read);
 
             if (unread.length > notifCount) {
                 const audio = new Audio("/Notification.mp3");
                 audio.play().catch(() => {});
-
-                toast.info(unread[0].message, {toastId: "notif" });
+                toast.info(unread[0].message, { toastId: "notif" });
             }
 
             setNotifCount(unread.length);
-
         } catch (err) {
-            console.log(err)
+            console.log(err);
         }
     };
 
-    useEffect(()=>{
-        fetchNotifications();
-        const interval = setInterval(fetchNotifications, 10000);
-        return() => clearInterval(interval);
-    }, []);
-
-    const navigate = useNavigate();
-    const location = useLocation();
-
-    const role = localStorage.getItem("role");
-
     useEffect(() => {
-        const fetchProfile = async () => {
-            try {
-                const res = await api.get("profile/");
-                setProfile(res.data);
-            } catch (err) {
-                console.log("Profile fetch error", err);
-            }
-        };
-
-        // ✅ FIX: fetch for BOTH doctor and patient
         fetchProfile();
+        fetchNotifications();
 
-    }, [role]);
+        const interval = setInterval(fetchNotifications, 10000);
+        return () => clearInterval(interval);
+    }, []);
 
     const toggleDrawer = () => setOpen(!open);
 
@@ -97,12 +91,8 @@ function MainLayout({ children }) {
 
     return (
         <Box sx={{ display: "flex", minHeight: "100vh" }}>
-
-            {/* 🔝 TOP BAR */}
             <AppBar position="fixed" sx={{ zIndex: 1201, background: "#0f172a" }}>
                 <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-                    
-                    {/* LEFT */}
                     <Box sx={{ display: "flex", alignItems: "center" }}>
                         <IconButton color="inherit" onClick={toggleDrawer}>
                             <MenuIcon />
@@ -113,28 +103,29 @@ function MainLayout({ children }) {
                         </Typography>
                     </Box>
 
-                    {/* RIGHT */}
                     <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-
-                        {/* ✅ FIXED TEXT */}
                         <Typography sx={{ fontSize: 14 }}>
                             {role === "doctor"
                                 ? `Dr. ${profile?.username || ""}`
                                 : profile?.name || "Patient"}
                         </Typography>
 
-                        <IconButton color="inherit" onClick={() => {setNotifCount(0); 
-                                                                    navigate("/notifications");
-                                                                    }}>
+                        <IconButton
+                            color="inherit"
+                            onClick={() => {
+                                setNotifCount(0);
+                                navigate("/notifications");
+                            }}
+                        >
                             <Badge badgeContent={notifCount} color="error">
-                             <NotificationsIcon />
-                             </Badge>
+                                <NotificationsIcon />
+                            </Badge>
                         </IconButton>
 
                         <Avatar
                             src={
                                 profile?.profile_picture
-                                    ? `http://127.0.0.1:8000${profile.profile_picture}`
+                                    ? profile.profile_picture
                                     : ""
                             }
                             sx={{
@@ -146,11 +137,9 @@ function MainLayout({ children }) {
                             onClick={() => navigate("/profile")}
                         />
                     </Box>
-
                 </Toolbar>
             </AppBar>
 
-            {/* 📌 SIDEBAR */}
             <Drawer
                 variant="permanent"
                 sx={{
@@ -200,7 +189,6 @@ function MainLayout({ children }) {
                         );
                     })}
 
-                    {/* 🔓 LOGOUT */}
                     <ListItemButton
                         onClick={handleLogout}
                         sx={{
@@ -219,7 +207,6 @@ function MainLayout({ children }) {
                 </List>
             </Drawer>
 
-            {/* 📄 CONTENT */}
             <Box
                 component="main"
                 sx={{
@@ -232,7 +219,6 @@ function MainLayout({ children }) {
                 <Toolbar />
                 {children}
             </Box>
-
         </Box>
     );
 }
